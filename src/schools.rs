@@ -1,14 +1,18 @@
+use embedded_svc::http::client::Connection;
+
 use crate::{
     error::Error, jsonrpc, params::FindSchoolParams, resources::School, SchoolSearchResult,
 };
 
-fn get_client() -> jsonrpc::Client {
-    jsonrpc::Client::new("https://mobile.webuntis.com/ms/schoolquery2")
+fn get_client<C>(client: C) -> jsonrpc::Client<C>
+where C: Connection {
+    jsonrpc::Client::new("https://mobile.webuntis.com/ms/schoolquery2", client)
 }
 
 /// Returns all schools matching the query or an empty vec if there are too many results.
-pub fn search(query: &str) -> Result<Vec<School>, Error> {
-    let result = get_client().request(
+pub fn search<C>(query: &str, client: C) -> Result<Vec<School>, Error> 
+where C: Connection {
+    let result = get_client(client).request(
         "searchSchool",
         vec![FindSchoolParams::Search { search: query }],
     );
@@ -16,8 +20,9 @@ pub fn search(query: &str) -> Result<Vec<School>, Error> {
 }
 
 /// Retrieves a school by its id.
-pub fn get_by_id(id: &usize) -> Result<School, Error> {
-    let result = get_client().request(
+pub fn get_by_id<C>(id: &usize, client: C) -> Result<School, Error> 
+where C: Connection{
+    let result = get_client(client).request(
         "searchSchool",
         vec![FindSchoolParams::ById { schoolid: id }],
     );
@@ -26,8 +31,9 @@ pub fn get_by_id(id: &usize) -> Result<School, Error> {
 }
 
 /// Retrieves a school by it's [`login_name`](School#structfield.login_name).
-pub fn get_by_name(name: &str) -> Result<School, Error> {
-    let result = get_client().request(
+pub fn get_by_name<C>(name: &str, client: C) -> Result<School, Error> 
+where C: Connection{
+    let result = get_client(client).request(
         "searchSchool",
         vec![FindSchoolParams::ByName { schoolname: name }],
     );

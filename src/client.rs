@@ -1,4 +1,5 @@
-use chrono::TimeZone;
+use chrono::{DateTime, FixedOffset, TimeZone};
+use embedded_svc::http::{self, client::Connection};
 
 use crate::{datetime::Date, error::Error, jsonrpc, params, resources::*, Session};
 
@@ -14,12 +15,14 @@ use crate::{datetime::Date, error::Error, jsonrpc, params, resources::*, Session
 ///     }
 /// }
 /// ```
-pub struct Client {
-    rpc_client: jsonrpc::Client,
+pub struct Client<C>
+where C:Connection {
+    rpc_client: jsonrpc::Client<C>,
     session: Session,
 }
 
-impl Client {
+impl<C> Client<C>
+where C:Connection {
     /// Method for creating a new session.
     /// The `server` and `school` parameter both depend on the school that the user is part of; You can get `server` from
     /// [`School.server`](crate::School::server) and `school` from [`School.login_name`](crate::School::login_name).
@@ -28,18 +31,25 @@ impl Client {
         school: &str,
         username: &str,
         password: &str,
+        http_client: C
     ) -> Result<Self, Error> {
         let params = params::AuthenticateParams {
             client: "untis-rs",
             user: username,
             password,
         };
-        let mut rpc_client = jsonrpc::Client::new(&make_untis_url(server, school));
+        let mut rpc_client = jsonrpc::Client::new(&make_untis_url(server, school), http_client);
         let session: Session = rpc_client.request("authenticate", params)?;
+        // Allow the rpc client to put the session id into the cookie header
+        rpc_client.session_id = Some(session.session_id.clone());
         Ok(Self {
             rpc_client,
             session,
         })
+    }
+
+    pub fn date(&self) -> Option<DateTime<FixedOffset>>{
+        self.rpc_client.date
     }
 
     /// Returns the active session.
@@ -199,15 +209,17 @@ impl Client {
     }
 }
 
-impl Drop for Client {
+impl<C> Drop for Client<C> 
+where C:Connection{
     fn drop(&mut self) {
         _ = self.logout();
     }
 }
 
 impl School {
-    pub fn client_login(&self, username: &str, password: &str) -> Result<Client, Error> {
-        Client::login(&self.server, &self.login_name, username, password)
+    pub fn client_login<C>(&self, username: &str, password: &str, http_client: C) -> Result<Client<C>, Error>
+    where C:Connection {
+        Client::login(&self.server, &self.login_name, username, password, http_client)
     }
 }
 
