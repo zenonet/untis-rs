@@ -2,6 +2,8 @@
 
 Library for accessing the [Untis](https://www.untis.at) JSON-RPC API.
 
+Modified by zenonet to use an http-client provided by embedded-svc.
+
 ## API
 
 This client uses the public Untis JSON-RPC API, which only has read-only, limited access.
