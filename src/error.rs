@@ -12,6 +12,10 @@ pub enum Error {
     /// Error while serializing/parsing data.
     Serde(serde_json::Error),
 
+    IoError(String),
+
+    DecodingError,
+
     /// Error with the response HTTP status code.
     Http(u16),
 
@@ -29,7 +33,9 @@ impl Display for Error {
             Self::Serde(err) => format!("Serde Error: {}", err),
             Self::Http(status) => format!("HTTP Error: {}", status),
             Self::Rpc(error) => format!("RPC Error: {} {}", error.code, error.message),
+            Self::IoError(msg) => format!("IO-Error: {}", msg),
             Self::NotFound => String::from("Resource not found"),
+            Self::DecodingError => String::from("Error decoding http response from server")
         };
 
         formatter.write_str(&msg)

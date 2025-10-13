@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, fmt::{Debug, Display}};
 
 use crate::error;
 use chrono::{DateTime, FixedOffset};
@@ -106,9 +106,8 @@ where C: Connection {
         let mut request= self.http_client.post(&self.url, &cookies[..]).unwrap(); 
     
         let buf = serde_json::to_vec(&data).unwrap();
-        println!("Request: {}", &String::from_utf8(buf.clone()).unwrap());
-        request.write(&buf).unwrap();
-        let mut response = request.submit().unwrap();
+        request.write(&buf).map_err(|e| error::Error::IoError(format!("{:?}", e)))?;
+        let mut response = request.submit().map_err(|e| error::Error::IoError(format!("{:?}", e)))?;
     
         let status = response.status();
         if !status == 200 {
@@ -125,8 +124,7 @@ where C: Connection {
 
 
 
-        let text = read_response(&mut response);
-        println!("{}", text);
+        let text = read_response(&mut response).map_err(|_| error::Error::DecodingError)?;
         let response: Response<T> = serde_json::from_str(&text)?;
 
 
@@ -148,13 +146,16 @@ where C: Connection {
 
 
 
-fn read_response<C>(response: &mut embedded_svc::http::client::Response<&mut C>) -> String
+
+/// Reads the body of an HTTP response
+/// Returns Err(()) when the Response is invalid (either invalid Content-Length header or invalid utf8 body)
+fn read_response<C>(response: &mut embedded_svc::http::client::Response<&mut C>) -> Result<String, ()>
 where C: Connection{
     if let Some(len) = response.header("Content-Length"){
-        let len = len.parse::<usize>().unwrap();
+        let len = len.parse::<usize>().map_err(|_| ())?;
         let mut buf = vec![0u8; len];
         let _ = response.read(&mut buf);
-        String::from_utf8(buf).unwrap()
+        String::from_utf8(buf).map_err(|_| ())
     }else{
         let mut buf = Box::new(Vec::new());
         // Read in chunks; avoid using BufReader as requested.
@@ -167,10 +168,8 @@ where C: Connection{
                 _ => break,
             }
         }
-        println!("Read {}", buf.len());
         let s = String::from_utf8(*buf).unwrap();
-        println!("read:\n{s}");
-        s
+        Ok(s)
     }
 
 }
