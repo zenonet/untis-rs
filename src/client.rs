@@ -15,8 +15,9 @@ use crate::{datetime::Date, error::Error, jsonrpc, params, resources::*, Session
 ///     }
 /// }
 /// ```
-pub struct Client<C>
-where C:Connection {
+pub struct Client<C> where C: http::client::Connection
+
+{
     rpc_client: jsonrpc::Client<C>,
     session: Session,
 }

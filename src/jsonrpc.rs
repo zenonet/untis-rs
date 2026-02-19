@@ -64,7 +64,7 @@ pub struct Error {
     pub message: String,
 }
 
-pub(crate) struct Client<C> {
+pub struct Client<C> {
     http_client: embedded_svc::http::client::Client<C>,
     url: String,
     last_req_id: usize,
